@@ -1,6 +1,6 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys
+import os
 import wx, wx.lib.scrolledpanel
 from xlrd import open_workbook
 from xlwt import Workbook
@@ -34,7 +34,6 @@ class Count(wx.Frame):
         self.pixels = 0
 
         # APP BODY
-
         pnl = wx.Panel(self)
         b_open = wx.Button(pnl, label="Step 1. Select Excel file")
         b_sheet = wx.Button(pnl, label="Step 2. Select Excel sheet")
@@ -91,48 +90,42 @@ class Count(wx.Frame):
 
         return self.wkbook, self.wksheet, self.old_sheet, self.wanted_rows
 
-    def copy_xls(self):
+    def copy_xls(self, wkbook):
         """
         Create a copy of the original excel file. 
         """
-        self.new_book = copy(self.wkbook)
+        self.new_book = copy(wkbook)
         self.new_sheet = self.new_book.get_sheet(self.wksheet)
-        self.new_sheet.name = 'CALCULATED DATA'
+        self.new_sheet.name = 'COUNTS AND VOLUMES'
         return self.new_book, self.new_sheet
         
     def start(self, event):
-        self.copy_xls()
+        self.copy_xls(self.wkbook)
         self.col_prompt()
         self.multiply_by_10()
         self.dg_volume()
+        self.cell_density()
         
         self.wkbook.release_resources()
-        # TEMPORARY--will allow user to name their own file when they save.
-        self.new_book.save('areas-02932075348902.xls') 
 
     ##### PROGRAM START #####
-
 
     def col_prompt(self):
         """
         Ask user what columns they want. 
         """
-
         choose = ColQueryDialog(None, title="Choose columns")
         choose.EnableLayoutAdaptation(True)
         choose.ShowModal()
         self.wanted_cols = choose.GetValues()
         choose.Destroy()
         
-        print self.wanted_cols
         return self.wanted_cols
-
  
     def multiply_by_10(self):
         """
-        BrdU counts - multiply all values by 10.
+        Cell counts - multiply all values by 10.
         """
-
         for row in range(1, self.wanted_rows):
             for col in range(len(self.wanted_cols['counts'])):
                 self.new_sheet.write(row, self.wanted_cols['counts'][col],
@@ -144,15 +137,46 @@ class Count(wx.Frame):
         """
         px = (self.pixels.GetValue()).encode('utf-8')
         calc = (1/float(px))**2 * 2 * 0.4
-        print calc
+        
         for row in range(1, self.wanted_rows):
             for col in range(len(self.wanted_cols['areas'])):
-                self.new_sheet.write(row, self.wanted_cols['areas'][col],
-                                     self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc)
+                vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
+
+                self.new_sheet.write(row, self.wanted_cols['areas'][col], vol)
+                
+                self.volumes.append(vol)
+        self.new_book.save('temp-areas-file.xls')
 
     def cell_density(self):
-        #calculate cell density for each brain. counts/mm3
-        pass
+        """
+        calculate cell density for each brain. counts/mm3
+        """
+        temp_book = open_workbook('temp-areas-file.xls')
+        new_book = self.copy_xls(temp_book)
+        temp_sheet = temp_book.sheet_by_index(self.wksheet)
+        
+        headings = ["Dorsal DG density", "Ventral DG density", "Dorsal hil density", "Ventral hil density"]
+        for cell in range(len(self.wanted_cols['areas'])):
+            i = cell + 2
+            self.new_sheet.write(0, self.wanted_cols['areas'][-1] + i, headings[cell])
+            
+        print self.wanted_rows
+        for row in range(1, self.wanted_rows):
+            for col in range(len(self.wanted_cols['areas'])):
+                count = temp_sheet.cell(row, self.wanted_cols['counts'][col]).value
+                area = temp_sheet.cell(row, self.wanted_cols['areas'][col]).value
+
+                if count == "" or area == "":
+                    pass
+                else: 
+                    calc = count/area
+                    print count, area, calc
+                    i = col + 2
+                    self.new_sheet.write(row, self.wanted_cols['areas'][-1]  + i, calc)
+
+        temp_book.release_resources()
+        os.remove('temp-areas-file.xls')
+        self.new_book.save('areas-02932075348902.xls')
 
 class ColQueryDialog(wx.Dialog):
     """
@@ -240,7 +264,8 @@ class ColQueryDialog(wx.Dialog):
         pnl.Layout()
 
     def GetValues(self):
-        wanted_cols = {} 
+        wanted_cols = {}
+        
         wanted_cols['counts'] = []
         wanted_cols['counts'].append(self.ddg.GetValue())
         wanted_cols['counts'].append(self.vdg.GetValue())
