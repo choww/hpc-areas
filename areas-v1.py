@@ -37,9 +37,9 @@ class Count(wx.Frame):
         pnl = wx.Panel(self)
         b_open = wx.Button(pnl, label="Step 1. Select Excel file")
         b_sheet = wx.Button(pnl, label="Step 2. Select Excel sheet")
-        t_pixels = wx.StaticText(pnl, label="Step 4. Pixels pers micron:")
+        t_pixels = wx.StaticText(pnl, label="Step 3. Pixels pers micron:")
         self.pixels = wx.TextCtrl(pnl)
-        b_run = wx.Button(pnl, label="Step 5. Start Program")
+        b_run = wx.Button(pnl, label="Step 4. Start Program")
 
         b_open.Bind(wx.EVT_BUTTON, self.open_xls)
         b_sheet.Bind(wx.EVT_BUTTON, self.get_sheet)
@@ -90,25 +90,32 @@ class Count(wx.Frame):
 
         return self.wkbook, self.wksheet, self.old_sheet, self.wanted_rows
 
-    def copy_xls(self, wkbook):
-        """
-        Create a copy of the original excel file. 
-        """
-        self.new_book = copy(wkbook)
-        self.new_sheet = self.new_book.get_sheet(self.wksheet)
-        self.new_sheet.name = 'COUNTS AND VOLUMES'
-        return self.new_book, self.new_sheet
-        
     def start(self, event):
         self.copy_xls(self.wkbook)
         self.col_prompt()
+        self.headings()
         self.multiply_by_10()
         self.dg_volume()
         self.cell_density()
         
         self.wkbook.release_resources()
+        print "done"
 
     ##### PROGRAM START #####
+
+    def copy_xls(self, wkbook):
+        """
+        Create a copy of the original excel file and adds a new sheet where the
+        calculated data will go.
+        """
+        self.new_book = copy(wkbook)
+        sheet = self.new_book.get_sheet(-1)
+        
+        if not sheet.name == 'CALCULATED DATA':
+            self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
+        else:
+            self.new_sheet = sheet
+        return self.new_book, self.new_sheet
 
     def col_prompt(self):
         """
@@ -121,58 +128,83 @@ class Count(wx.Frame):
         choose.Destroy()
         
         return self.wanted_cols
- 
+
+    def headings(self):
+        """
+        Sets up column headings for the new worksheet. 
+        """
+        headings = {'id': ["ID", "Group"],
+                    'counts': ["Dorsal DG counts", "Ventral DG counts", "Dorsal hil counts", "Ventral hil counts"],
+                    'areas': ["Dorsal DG vol", "Ventral DG vol", "Dorsal hil vol", "Ventral hil vol", ''],
+                    'density': ["Dorsal DG density", "Ventral DG density", "Dorsal hil density", "Ventral hil density"]
+                    }
+        h_order = ['id', 'counts', 'areas', 'density']
+        for key in h_order:
+            if key == 'id':
+                h = self.wanted_cols[key][0]
+            elif key == 'counts':
+                h = self.wanted_cols['id'][-1]
+            elif key == 'areas':
+                h = self.wanted_cols['counts'][-1] + 1
+            else:
+                pass
+
+            for cell in range(len(headings[key])):
+                self.new_sheet.write(0, h, headings[key][cell])
+                h += 1
+                
+        for row in range(1, self.wanted_rows):
+            for i in range(2):
+                self.new_sheet.write(row, i, self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
+
     def multiply_by_10(self):
         """
         Cell counts - multiply all values by 10.
         """
         for row in range(1, self.wanted_rows):
+            c = self.wanted_cols['counts'][0]
             for col in range(len(self.wanted_cols['counts'])):
-                self.new_sheet.write(row, self.wanted_cols['counts'][col],
-                                     self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10)               
-
+                calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
+                self.new_sheet.write(row, c, calc)
+                c += 1
+ 
     def dg_volume(self):
         """
         Calculate DG & hilar volume for each brain. 
         """
         px = (self.pixels.GetValue()).encode('utf-8')
         calc = (1/float(px))**2 * 2 * 0.4
-        
+
         for row in range(1, self.wanted_rows):
+            c = self.wanted_cols['counts'][-1] + 1
             for col in range(len(self.wanted_cols['areas'])):
                 vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
-
-                self.new_sheet.write(row, self.wanted_cols['areas'][col], vol)
+                self.new_sheet.write(row, c, vol)
+                c += 1 
                 
-                self.volumes.append(vol)
         self.new_book.save('temp-areas-file.xls')
+        print "temp file created"
 
     def cell_density(self):
         """
-        calculate cell density for each brain. counts/mm3
+        Calculate cell density for each brain. counts/mm3
         """
         temp_book = open_workbook('temp-areas-file.xls')
         new_book = self.copy_xls(temp_book)
-        temp_sheet = temp_book.sheet_by_index(self.wksheet)
-        
-        headings = ["Dorsal DG density", "Ventral DG density", "Dorsal hil density", "Ventral hil density"]
-        for cell in range(len(self.wanted_cols['areas'])):
-            i = cell + 2
-            self.new_sheet.write(0, self.wanted_cols['areas'][-1] + i, headings[cell])
-            
-        print self.wanted_rows
+        temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
+
         for row in range(1, self.wanted_rows):
+            c = self.wanted_cols['areas'][-1] + 2
             for col in range(len(self.wanted_cols['areas'])):
                 count = temp_sheet.cell(row, self.wanted_cols['counts'][col]).value
                 area = temp_sheet.cell(row, self.wanted_cols['areas'][col]).value
 
                 if count == "" or area == "":
                     pass
-                else: 
+                else:
                     calc = count/area
-                    print count, area, calc
-                    i = col + 2
-                    self.new_sheet.write(row, self.wanted_cols['areas'][-1]  + i, calc)
+                    self.new_sheet.write(row, c, calc)
+                    c += 1
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
@@ -192,12 +224,17 @@ class ColQueryDialog(wx.Dialog):
         pnl.SetupScrolling(scroll_x=False)
 
         instruction = "Select a column [e.g. A, B, etc] for each parameter.\n" \
-                      "Leave blank if certain parameters are not needed." 
+                      "Do not leave anything blank!" 
         t_instruct = wx.StaticText(pnl, label=instruction)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(t_instruct, 0, wx.ALL|wx.CENTER, 10)
 
+        t_id = wx.StaticText(pnl, label="Animal ID")
+        self.id = wx.TextCtrl(pnl)
+        t_group = wx.StaticText(pnl, label="Treatment group")
+        self.group = wx.TextCtrl(pnl)
+        
         t_count = wx.StaticText(pnl, label="COUNTS")
         t_ddg = wx.StaticText(pnl, label="Dorsal dentate")
         self.ddg = wx.TextCtrl(pnl)
@@ -207,11 +244,6 @@ class ColQueryDialog(wx.Dialog):
         self.dhil = wx.TextCtrl(pnl)
         t_vhil = wx.StaticText(pnl, label="Ventral hilus")
         self.vhil = wx.TextCtrl(pnl)
-
-        t_totdg = wx.StaticText(pnl, label="Total DG")
-        self.totdg = wx.TextCtrl(pnl)
-        t_tothil = wx.StaticText(pnl, label="Total hilus")
-        self.tothil = wx.TextCtrl(pnl)
 
         t_area = wx.StaticText(pnl, label="AREAS")
         t_ddgarea = wx.StaticText(pnl, label="Dorsal dentate areas")
@@ -223,6 +255,12 @@ class ColQueryDialog(wx.Dialog):
         t_vhilarea = wx.StaticText(pnl, label="Ventral hilus areas")
         self.vhilarea = wx.TextCtrl(pnl)
 
+        sizer.Add(t_id, 0, wx.LEFT|wx.TOP, 5)
+        sizer.Add(self.id, 0, wx.LEFT, 5)
+        sizer.Add(t_group, 0, wx.LEFT, 5)
+        sizer.Add(self.group, 0, wx.LEFT, 5)
+
+        sizer.AddSpacer(20)
         sizer.Add(t_count, 0, wx.ALL, 10)
         sizer.Add(t_ddg, 0, wx.LEFT, 5)
         sizer.Add(self.ddg, 0, wx.LEFT, 5)
@@ -234,12 +272,6 @@ class ColQueryDialog(wx.Dialog):
         sizer.Add(self.vhil, 0, wx.LEFT, 5)
 
         sizer.AddSpacer(20)
-        sizer.Add(t_totdg, 0, wx.LEFT, 5)
-        sizer.Add(self.totdg, 0, wx.LEFT, 5)
-        sizer.Add(t_tothil, 0, wx.LEFT, 5)
-        sizer.Add(self.tothil, 0, wx.LEFT, 5)
-        sizer.AddSpacer(20)
-
         sizer.Add(t_area, 0, wx.ALL, 10)
         sizer.Add(t_ddgarea, 0, wx.LEFT, 5)
         sizer.Add(self.ddgarea, 0, wx.LEFT, 5)
@@ -265,15 +297,16 @@ class ColQueryDialog(wx.Dialog):
 
     def GetValues(self):
         wanted_cols = {}
+
+        wanted_cols['id'] = []
+        wanted_cols['id'].append(self.id.GetValue())
+        wanted_cols['id'].append(self.group.GetValue())
         
         wanted_cols['counts'] = []
         wanted_cols['counts'].append(self.ddg.GetValue())
         wanted_cols['counts'].append(self.vdg.GetValue())
         wanted_cols['counts'].append(self.dhil.GetValue())
         wanted_cols['counts'].append(self.vhil.GetValue())
-
-        wanted_cols['counts'].append(self.totdg.GetValue())
-        wanted_cols['counts'].append(self.tothil.GetValue())
 
         wanted_cols['areas'] = []
         wanted_cols['areas'].append(self.ddgarea.GetValue())
