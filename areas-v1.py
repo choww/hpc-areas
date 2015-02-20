@@ -141,11 +141,11 @@ class Count(wx.Frame):
         h_order = ['id', 'counts', 'areas', 'density']
         for key in h_order:
             if key == 'id':
-                h = self.wanted_cols[key][0]
+                h = min(self.wanted_cols[key])
             elif key == 'counts':
-                h = self.wanted_cols['id'][-1]
+                h = max(self.wanted_cols['id']) + 1
             elif key == 'areas':
-                h = self.wanted_cols['counts'][-1] + 1
+                h = max(self.wanted_cols['counts']) + 1
             else:
                 pass
 
@@ -162,7 +162,7 @@ class Count(wx.Frame):
         Cell counts - multiply all values by 10.
         """
         for row in range(1, self.wanted_rows):
-            c = self.wanted_cols['counts'][0]
+            c = max(self.wanted_cols['id']) + 1
             for col in range(len(self.wanted_cols['counts'])):
                 calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
                 self.new_sheet.write(row, c, calc)
@@ -176,7 +176,7 @@ class Count(wx.Frame):
         calc = (1/float(px))**2 * 2 * 0.4
 
         for row in range(1, self.wanted_rows):
-            c = self.wanted_cols['counts'][-1] + 1
+            c = max(self.wanted_cols['counts']) + 1
             for col in range(len(self.wanted_cols['areas'])):
                 vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
                 self.new_sheet.write(row, c, vol)
@@ -194,7 +194,7 @@ class Count(wx.Frame):
         temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
 
         for row in range(1, self.wanted_rows):
-            c = self.wanted_cols['areas'][-1] + 2
+            c =  max(self.wanted_cols['areas']) + 1
             for col in range(len(self.wanted_cols['areas'])):
                 count = temp_sheet.cell(row, self.wanted_cols['counts'][col]).value
                 area = temp_sheet.cell(row, self.wanted_cols['areas'][col]).value
