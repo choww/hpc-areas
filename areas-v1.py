@@ -99,7 +99,6 @@ class Count(wx.Frame):
         self.cell_density()
         
         self.wkbook.release_resources()
-        print "done"
 
     ##### PROGRAM START #####
 
@@ -207,7 +206,19 @@ class Count(wx.Frame):
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
-        self.new_book.save('areas-02932075348902.xls')
+        try: 
+            self.new_book.save('areas-02932075348902.xls')
+        except IOError:
+            msg = "Please close the file areas-02932075348902.xls before proceeding\n" \
+                  "Click OK when the file is closed"
+            io = wx.MessageDialog(None, msg, "ERROR",
+                                wx.OK|wx.ICON_EXCLAMATION)
+            if io.ShowModal() == wx.ID_OK: # and check file is closed
+                self.new_book.save('areas-02932075348902.xls')
+                print "done"
+            io.Destroy()
+        else:
+            print "****"  
 
 class ColQueryDialog(wx.Dialog):
     """
