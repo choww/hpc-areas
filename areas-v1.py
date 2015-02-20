@@ -194,17 +194,16 @@ class Count(wx.Frame):
         temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
 
         for row in range(1, self.wanted_rows):
-            c =  max(self.wanted_cols['areas']) + 1
-            for col in range(len(self.wanted_cols['areas'])):
-                count = temp_sheet.cell(row, self.wanted_cols['counts'][col]).value
-                area = temp_sheet.cell(row, self.wanted_cols['areas'][col]).value
-
-                if count == "" or area == "":
-                    pass
-                else:
+            c =  max(self.wanted_cols['id']) + 1
+            for col in range(4):
+                count = temp_sheet.cell(row, c).value
+                area = temp_sheet.cell(row, c + 5).value
+                if not (count == "" or area == ""):
                     calc = count/area
-                    self.new_sheet.write(row, c, calc)
-                    c += 1
+                else:
+                    calc = ""
+                self.new_sheet.write(row, c + 10, calc)
+                c += 1
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
