@@ -15,8 +15,8 @@ class IntroPanel(wx.Panel):
         wx.Panel.__init__(self, parent=parent)
 
         txt0 = "This app will:\n" \
-               "Calculate counts for the entire dentate gyrus and hilus (multiply values by 10)\n" \
-               "Calculate dentate gyrus and hilar volumes (using Cavalieri's principle)\n" \
+               "Calculate counts for the doral & ventral dentate gyrus and hilus (multiply values by 10)\n" \
+               "Calculate dorsal & ventral dentate gyrus and hilar volumes (using Cavalieri's principle)\n" \
                "Calculate cell density based on counts and volume data (counts/mm3)"
 
         txt0_i = wx.StaticText(self, label=txt0)
@@ -67,7 +67,9 @@ class XLPanel(wx.Panel):
         self.volumes = []
 
         b_open = wx.Button(self, label="Step 1. Select Excel file")
+        self.t_open = wx.StaticText(self, label="", size=(220,5))
         b_sheet = wx.Button(self, label="Step 2. Select Excel sheet")
+        self.t_sheet = wx.StaticText(self, label="", size=(100,5))
         t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron:")
         self.pixels = wx.TextCtrl(self)
         b_run = wx.Button(self, label="Step 4. Start Program")
@@ -78,7 +80,9 @@ class XLPanel(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(b_open, 0, wx.ALL|wx.CENTER, 5)
+        sizer.Add(self.t_open, 5, wx.ALL|wx.CENTER, 10)
         sizer.Add(b_sheet, 0, wx.ALL|wx.CENTER, 5)
+        sizer.Add(self.t_sheet, 0, wx.ALL|wx.CENTER, 10)
         sizer.Add(t_pixels, 0, wx.ALL|wx.CENTER, 5)
         sizer.Add(self.pixels, 0, wx.ALL|wx.CENTER, 5)
         sizer.Add(b_run, 0, wx.ALL|wx.CENTER, 15)
@@ -97,7 +101,7 @@ class XLPanel(wx.Panel):
                                  )
         open_xls.ShowModal()
         self.orig_xls = open_xls.GetPath()
-        print type(self.orig_xls)
+        self.t_open.SetLabel(self.orig_xls)
         open_xls.Destroy()
 
     def get_sheet(self, event):
@@ -121,6 +125,7 @@ class XLPanel(wx.Panel):
                                            "Choose Sheet", wksheets)
             sheets.ShowModal()
             self.wksheet = sheets.GetSelection()
+            self.t_sheet.SetLabel(wksheets[self.wksheet])
             sheets.Destroy()
 
         self.old_sheet = self.wkbook.sheet_by_index(self.wksheet)
@@ -138,11 +143,22 @@ class XLPanel(wx.Panel):
             io.ShowModal()
             io.Destroy()
         else: 
-            self.col_prompt()
-            self.headings()
-            self.multiply_by_10()
-            self.dg_volume()
-            self.cell_density()
+            px = self.pixels.GetValue()
+            if px == u"":
+                msg = "Please fill in the pixel value!"
+            elif not px.isdigit():
+                msg = "Please enter numbers only as the pixel value"
+            else:
+                self.col_prompt()
+                self.headings()
+                self.multiply_by_10()
+                self.dg_volume()
+                self.cell_density()
+                
+            io = wx.MessageDialog(None, msg, "ERROR",
+                            wx.OK|wx.ICON_EXCLAMATION)
+            io.ShowModal()
+            io.Destroy()
             
             self.wkbook.release_resources()
             
@@ -254,20 +270,16 @@ class XLPanel(wx.Panel):
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
 
-        try: 
-            self.new_book.save('areas-02932075348902.xls')
-        except IOError:                   
-            msg = "Please close the file areas-02932075348902.xls before proceeding\n" \
-                  "Click OK when the file is closed"
-            io = wx.MessageDialog(None, msg, "ERROR",
-                                wx.OK|wx.ICON_EXCLAMATION)
-            
-            if io.ShowModal() == wx.ID_OK:
-                try:
-                    self.new_book.save('areas-02932075348902.xls')
-                    print "done"
-                except IOError:
-                    print "please close your file!"
-            io.Destroy()
-        else:
-            print "****"          
+        closed_file = True
+        while closed_file: 
+            try: 
+                self.new_book.save('areas-02932075348902.xls')
+                closed_file = False
+            except IOError:                    
+                msg = "Please close the file areas-02932075348902.xls before proceeding" 
+                io = wx.MessageDialog(None, msg, "ERROR",
+                                    wx.OK|wx.ICON_EXCLAMATION)
+                io.ShowModal()
+                io.Destroy()
+            else:
+                print "****"          
