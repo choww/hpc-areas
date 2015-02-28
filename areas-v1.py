@@ -1,6 +1,6 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
-import os
+import os, sys, psutil
 import wx, wx.lib.scrolledpanel
 from xlrd import open_workbook
 from xlwt import Workbook
@@ -8,12 +8,34 @@ from xlutils.copy import copy
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
 
-filetypes = "All Excel File (*.xls, *.xlsx)|*.xls;*.xlsx|" \
-            "All files (*.*)|*.*"
+filetypes = "All Excel File (*.xls, *.xlsx)|*.xls;*.xlsx" 
 
-class Count(wx.Frame):
-    def __init__(self, *args, **kwargs):
-        wx.Frame.__init__(self, *args, **kwargs)
+class IntroPanel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent=parent)
+
+        txt = "Make sure the data in your excel file is formatted " \
+              "similarly to this: "
+        txt_i = wx.StaticText(self, label=txt)
+     
+        pwd = os.getcwd()
+        wxImg = wx.EmptyBitmap(1,1)
+        imgname = u"%s\\format.bmp" % (pwd)
+        img = wx.Image(imgname, wx.BITMAP_TYPE_ANY)
+        w = img.GetWidth()
+        h = img.GetHeight()
+        set_img = wx.StaticBitmap(self, -1, wx.BitmapFromImage(img))
+
+        sizer_i = wx.BoxSizer(wx.VERTICAL)
+        sizer_i.Add(txt_i, 0, wx.TOP|wx.CENTER, 10)
+        sizer_i.AddSpacer(15)
+        sizer_i.Add(set_img, 0, wx.ALL|wx.CENTER, 10)
+        self.SetSizer(sizer_i)
+        
+
+class XLPanel(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent=parent)
 
         self.SetSize((200, 300))
         self.Center()
@@ -31,15 +53,14 @@ class Count(wx.Frame):
         self.wanted_cols = 0
 
         # CALCULATION VARS
-        self.pixels = 0
+        self.pixels = 0     # input pixels per micron
+        self.volumes = []
 
-        # APP BODY
-        pnl = wx.Panel(self)
-        b_open = wx.Button(pnl, label="Step 1. Select Excel file")
-        b_sheet = wx.Button(pnl, label="Step 2. Select Excel sheet")
-        t_pixels = wx.StaticText(pnl, label="Step 3. Pixels pers micron:")
-        self.pixels = wx.TextCtrl(pnl)
-        b_run = wx.Button(pnl, label="Step 4. Start Program")
+        b_open = wx.Button(self, label="Step 1. Select Excel file")
+        b_sheet = wx.Button(self, label="Step 2. Select Excel sheet")
+        t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron:")
+        self.pixels = wx.TextCtrl(self)
+        b_run = wx.Button(self, label="Step 4. Start Program")
 
         b_open.Bind(wx.EVT_BUTTON, self.open_xls)
         b_sheet.Bind(wx.EVT_BUTTON, self.get_sheet)
@@ -52,9 +73,8 @@ class Count(wx.Frame):
         sizer.Add(self.pixels, 0, wx.ALL|wx.CENTER, 5)
         sizer.Add(b_run, 0, wx.ALL|wx.CENTER, 15)
 
-        pnl.SetSizer(sizer)
-        self.Show()
-        
+        self.SetSizer(sizer)
+
     def open_xls(self, event):
         """
         Opens the selected excel file 
@@ -67,23 +87,31 @@ class Count(wx.Frame):
                                  )
         open_xls.ShowModal()
         self.orig_xls = open_xls.GetPath()
+        print type(self.orig_xls)
         open_xls.Destroy()
 
     def get_sheet(self, event):
         """
         Choose excel sheet to work with
         """
-        self.wkbook = open_workbook(self.orig_xls, on_demand=True)
+        try:
+            self.wkbook = open_workbook(self.orig_xls, on_demand=True)
 
-        wksheets = []
-        for s in self.wkbook.sheet_names():
-            wksheets.append(s)
-
-        sheets = wx.SingleChoiceDialog(self, "Choose your excel worksheet",
-                                       "Choose Sheet", wksheets)
-        sheets.ShowModal()
-        self.wksheet = sheets.GetSelection()
-        sheets.Destroy()
+            wksheets = []
+            for s in self.wkbook.sheet_names():
+                wksheets.append(s)
+        except IOError:
+            msg = "Please select an excel file first!" 
+            io = wx.MessageDialog(None, msg, "ERROR",
+                                wx.OK|wx.ICON_EXCLAMATION)
+            io.ShowModal()
+            io.Destroy()
+        else:
+            sheets = wx.SingleChoiceDialog(self, "Choose your excel worksheet",
+                                           "Choose Sheet", wksheets)
+            sheets.ShowModal()
+            self.wksheet = sheets.GetSelection()
+            sheets.Destroy()
 
         self.old_sheet = self.wkbook.sheet_by_index(self.wksheet)
         self.wanted_rows = self.old_sheet.nrows
@@ -91,15 +119,23 @@ class Count(wx.Frame):
         return self.wkbook, self.wksheet, self.old_sheet, self.wanted_rows
 
     def start(self, event):
-        self.copy_xls(self.wkbook)
-        self.col_prompt()
-        self.headings()
-        self.multiply_by_10()
-        self.dg_volume()
-        self.cell_density()
-        
-        self.wkbook.release_resources()
-
+        try:
+            self.copy_xls(self.wkbook)
+        except AttributeError:
+            msg = "Please select an excel file, excel sheet, and enter in the pixel value!" 
+            io = wx.MessageDialog(None, msg, "ERROR",
+                                wx.OK|wx.ICON_EXCLAMATION)
+            io.ShowModal()
+            io.Destroy()
+        else: 
+            self.col_prompt()
+            self.headings()
+            self.multiply_by_10()
+            self.dg_volume()
+            self.cell_density()
+            
+            self.wkbook.release_resources()
+     
     ##### PROGRAM START #####
 
     def copy_xls(self, wkbook):
@@ -109,7 +145,6 @@ class Count(wx.Frame):
         """
         self.new_book = copy(wkbook)
         sheet = self.new_book.get_sheet(-1)
-        
         if not sheet.name == 'CALCULATED DATA':
             self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
         else:
@@ -126,6 +161,7 @@ class Count(wx.Frame):
         self.wanted_cols = choose.GetValues()
         choose.Destroy()
         
+        print self.wanted_cols
         return self.wanted_cols
 
     def headings(self):
@@ -155,7 +191,7 @@ class Count(wx.Frame):
         for row in range(1, self.wanted_rows):
             for i in range(2):
                 self.new_sheet.write(row, i, self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
-
+ 
     def multiply_by_10(self):
         """
         Cell counts - multiply all values by 10.
@@ -166,7 +202,7 @@ class Count(wx.Frame):
                 calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
                 self.new_sheet.write(row, c, calc)
                 c += 1
- 
+
     def dg_volume(self):
         """
         Calculate DG & hilar volume for each brain. 
@@ -179,8 +215,9 @@ class Count(wx.Frame):
             for col in range(len(self.wanted_cols['areas'])):
                 vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
                 self.new_sheet.write(row, c, vol)
-                c += 1 
-                
+                c += 1
+
+        print self.wanted_cols['areas']
         self.new_book.save('temp-areas-file.xls')
         print "temp file created"
 
@@ -206,19 +243,64 @@ class Count(wx.Frame):
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
+
         try: 
             self.new_book.save('areas-02932075348902.xls')
-        except IOError:
+        except IOError:                   
             msg = "Please close the file areas-02932075348902.xls before proceeding\n" \
                   "Click OK when the file is closed"
             io = wx.MessageDialog(None, msg, "ERROR",
                                 wx.OK|wx.ICON_EXCLAMATION)
-            if io.ShowModal() == wx.ID_OK: # and check file is closed
-                self.new_book.save('areas-02932075348902.xls')
-                print "done"
+            
+            if io.ShowModal() == wx.ID_OK:
+                try:
+                    self.new_book.save('areas-02932075348902.xls')
+                    print "done"
+                except IOError:
+                    print "please close your file!"
             io.Destroy()
         else:
-            print "****"  
+            print "****"          
+        
+        
+class Count(wx.Frame):
+    def __init__(self, *args, **kwargs):
+        wx.Frame.__init__(self, *args, **kwargs)
+
+        self.Center()
+
+        # APP BODY
+
+        self.pnl_i = IntroPanel(self)
+        self.pnl = XLPanel(self)
+        self.pnl.Hide()
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.pnl_i, 0, wx.EXPAND)
+        sizer.Add(self.pnl, 0, wx.ALL)
+
+        self.b_next = wx.Button(self, label="Next")
+        self.b_next.Bind(wx.EVT_BUTTON, self.switch_pnl)
+        
+        sizer_i = wx.BoxSizer(wx.VERTICAL)
+        sizer_i.Add(self.b_next)
+        sizer.Add(sizer_i, 0, wx.ALL|wx.CENTER, 10)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+        
+        self.Show()
+
+    def switch_pnl(self, event):
+        if self.pnl_i.IsShown():
+            self.pnl_i.Hide()
+            self.b_next.Hide()
+            self.pnl.Show()
+        else:
+            self.pnl_i.Show()
+            self.pnl.Hide()
+        self.Fit()
+        
 
 class ColQueryDialog(wx.Dialog):
     """
@@ -254,7 +336,6 @@ class ColQueryDialog(wx.Dialog):
         self.dhil = wx.TextCtrl(pnl)
         t_vhil = wx.StaticText(pnl, label="Ventral hilus")
         self.vhil = wx.TextCtrl(pnl)
-
         t_area = wx.StaticText(pnl, label="AREAS")
         t_ddgarea = wx.StaticText(pnl, label="Dorsal dentate areas")
         self.ddgarea = wx.TextCtrl(pnl)
