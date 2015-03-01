@@ -135,7 +135,7 @@ class XLPanel(wx.Panel):
 
     def start(self, event):
         try:
-            self.copy_xls(self.wkbook)
+            self.new_xls()
         except AttributeError:
             msg = "Please select an excel file, excel sheet, and enter in the pixel value!" 
             io = wx.MessageDialog(None, msg, "ERROR",
@@ -151,12 +151,12 @@ class XLPanel(wx.Panel):
             else:
                 try:
                     self.col_prompt()
-                    self.headings()
                     self.multiply_by_10()
+                    self.headings()
+                    self.dg_volume()
                 except IndexError:
                     msg = "Please make sure your column IDs are correct!" 
-                else: 
-                    self.dg_volume()
+                else:
                     self.cell_density()
                 
             io = wx.MessageDialog(None, msg, "ERROR",
@@ -168,17 +168,12 @@ class XLPanel(wx.Panel):
             
     ##### PROGRAM START #####
 
-    def copy_xls(self, wkbook):
+    def new_xls(self):
         """
-        Create a copy of the original excel file and adds a new sheet where the
-        calculated data will go.
+        Create the new workbook that the calculated data will be entered in.
         """
-        self.new_book = copy(wkbook)
-        sheet = self.new_book.get_sheet(-1)
-        if not sheet.name == 'CALCULATED DATA':
-            self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
-        else:
-            self.new_sheet = sheet
+        self.new_book = Workbook()
+        self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
         return self.new_book, self.new_sheet
 
     def col_prompt(self):
@@ -221,6 +216,7 @@ class XLPanel(wx.Panel):
         for row in range(1, self.wanted_rows):
             for i in range(2):
                 self.new_sheet.write(row, i, self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
+
  
     def multiply_by_10(self):
         """
@@ -231,6 +227,7 @@ class XLPanel(wx.Panel):
             for col in range(len(self.wanted_cols['counts'])):
                 calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
                 self.new_sheet.write(row, c, calc)
+                self.wanted_cols['counts'][col] = c
                 c += 1
 
     def dg_volume(self):
@@ -247,7 +244,6 @@ class XLPanel(wx.Panel):
                 self.new_sheet.write(row, c, vol)
                 c += 1
 
-        print self.wanted_cols['areas']
         self.new_book.save('temp-areas-file.xls')
         print "temp file created"
 
@@ -256,7 +252,8 @@ class XLPanel(wx.Panel):
         Calculate cell density for each brain. counts/mm3
         """
         temp_book = open_workbook('temp-areas-file.xls')
-        new_book = self.copy_xls(temp_book)
+        self.new_book = copy(temp_book)
+        self.new_sheet = self.new_book.get_sheet(-1)
         temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
 
         for row in range(1, self.wanted_rows):
@@ -286,4 +283,4 @@ class XLPanel(wx.Panel):
                 io.ShowModal()
                 io.Destroy()
             else:
-                print "****"          
+                print "****"
