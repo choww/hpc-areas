@@ -102,7 +102,10 @@ class XLPanel(wx.Panel):
                                  )
         open_xls.ShowModal()
         self.orig_xls = open_xls.GetPath()
+        
         self.t_open.SetLabel(self.orig_xls)
+        self.t_open.SetForegroundColour((143,28,147))
+        
         open_xls.Destroy()
 
     def get_sheet(self, event):
@@ -127,6 +130,7 @@ class XLPanel(wx.Panel):
             sheets.ShowModal()
             self.wksheet = sheets.GetSelection()
             self.t_sheet.SetLabel(wksheets[self.wksheet])
+            self.t_sheet.SetForegroundColour((143,28,147))
             sheets.Destroy()
 
         self.old_sheet = self.wkbook.sheet_by_index(self.wksheet)
@@ -150,21 +154,22 @@ class XLPanel(wx.Panel):
             elif not px.isdigit():
                 msg = "Please enter numbers only as the pixel value"
             else:
-                try:
-                    self.col_prompt()
+                self.col_prompt()
+                try: 
                     self.multiply_by_10()
                     self.headings()
                     self.dg_volume()
-                except IndexError:
-                    msg = "Please make sure your column IDs are correct!" 
-                else:
                     self.cell_density()
-                
-            io = wx.MessageDialog(None, msg, "ERROR",
-                            wx.OK|wx.ICON_EXCLAMATION)
-            io.ShowModal()
-            io.Destroy()
-            
+                except IndexError:
+                    msg = "Please make sure your column IDs are correct!"
+                else: 
+                    self.save_xls()
+
+            ie = wx.MessageDialog(None, msg, "ERROR",
+                wx.OK|wx.ICON_EXCLAMATION)
+            ie.ShowModal()
+            ie.Destroy()
+
             self.wkbook.release_resources()
             
     ##### PROGRAM START #####
@@ -181,24 +186,34 @@ class XLPanel(wx.Panel):
         """
         Ask user what columns they want. 
         """
-        choose = ColQueryDialog(None, title="Choose columns")
-        choose.EnableLayoutAdaptation(True)
-        choose.ShowModal()
-        self.wanted_cols = choose.GetIndices()
-        wanted_cols = choose.GetValues()
-        choose.Destroy()
-
-        # UPDATE self.t_cols in main panel
-        txt = "Selected Columns: \n" \
-              "%s: %s; %s: %s; %s: %s"
-        keys = ['id', 'counts', 'areas']
-        
-        t_cols = txt % (keys[0], ", ".join(wanted_cols[keys[0]]), \
-                        keys[1], ", ".join(wanted_cols[keys[1]]), \
-                        keys[2], ", ".join(wanted_cols[keys[2]]))
-        self.t_cols.SetLabel(t_cols)
-
-        return self.wanted_cols
+        while True: 
+            try: 
+                choose = ColQueryDialog(None, title="Choose columns")
+                choose.EnableLayoutAdaptation(True)
+                if choose.ShowModal() == wx.ID_OK: 
+                    choose.Destroy()
+                    colnames = choose.GetValues()
+                
+                    # Update self.t_cols in main panel
+                    txt = "Selected Columns: \n" \
+                          "%s: %s; %s: %s; %s: %s"
+                    keys = ['id', 'counts', 'areas']
+                    t_cols = txt % (keys[0], ", ".join(colnames[keys[0]]), \
+                                    keys[1], ", ".join(colnames[keys[1]]), \
+                                    keys[2], ", ".join(colnames[keys[2]]))
+                    self.t_cols.SetLabel(t_cols)
+                    self.t_cols.SetForegroundColour((143,28,147))
+                    self.wanted_cols = choose.GetIndices()
+                break
+            except IndexError:
+                msg = "Please make sure all fields are filled in!"
+                ie = wx.MessageDialog(None, msg, "ERROR",
+                    wx.OK|wx.ICON_EXCLAMATION)
+                ie.ShowModal()
+                ie.Destroy()
+            else:
+                return self.wanted_cols
+                break
 
     def headings(self):
         """
@@ -247,12 +262,13 @@ class XLPanel(wx.Panel):
         """
         px = (self.pixels.GetValue()).encode('utf-8')
         calc = (1/float(px))**2 * 2 * 0.4
-
+        
         for row in range(1, self.wanted_rows):
             c = max(self.wanted_cols['counts']) + 2
             for col in range(len(self.wanted_cols['areas'])):
                 vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
                 self.new_sheet.write(row, c, vol)
+                self.wanted_cols['areas'][col] = c
                 c += 1
 
         self.new_book.save('temp-areas-file.xls')
@@ -268,10 +284,12 @@ class XLPanel(wx.Panel):
         temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
 
         for row in range(1, self.wanted_rows):
-            c =  max(self.wanted_cols['id']) + 1
             for col in range(4):
-                count = temp_sheet.cell(row, c).value
-                area = temp_sheet.cell(row, c + 5).value
+                cc = max(self.wanted_cols['counts'])
+                ca =  max(self.wanted_cols['areas'])
+
+                count = temp_sheet.cell(row, cc).value
+                area = temp_sheet.cell(row, ca).value
                 if not (count == "" or area == ""):
                     calc = count/area
                 else:
@@ -281,7 +299,8 @@ class XLPanel(wx.Panel):
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
-        
+
+    def save_xls(self):
         while True: 
             try:
                 save = wx.FileDialog(self, message="Save file as...",
@@ -289,13 +308,13 @@ class XLPanel(wx.Panel):
                                      defaultFile="",
                                      wildcard=filetypes,
                                      style=wx.SAVE)
-                save.ShowModal()
-                new_file = save.GetPath()
-                self.new_book.save(new_file)
-                save.Destroy()
+                if save.ShowModal() == wx.ID_OK:
+                    new_file = save.GetPath()
+                    self.new_book.save(new_file)
+                    save.Destroy()
 
-                wx.MessageBox('Saved: %s' % (new_file),
-                              'Finished', wx.OK|wx.ICON_INFORMATION)
+                    wx.MessageBox('Saved: %s' % (new_file),
+                                  'Finished', wx.OK|wx.ICON_INFORMATION)
                 break
             except IOError:                    
                 msg = "Please close the file %s before proceeding" % (new_file) 

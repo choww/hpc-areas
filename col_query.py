@@ -119,9 +119,7 @@ class ColQueryDialog(wx.Dialog):
         for key in wanted_cols:
             for c in range(len(wanted_cols[key])):
                 wanted_cols[key][c] = wanted_cols[key][c].encode('utf-8').upper()
-                if wanted_cols[key][c] == "":
-                    del wanted_cols[key][c]
-                elif len(wanted_cols[key][c]) == 1:
+                if len(wanted_cols[key][c]) == 1:
                     wanted_cols[key][c] = letters.find(wanted_cols[key][c])
                 else:
                     a = 26
@@ -129,4 +127,5 @@ class ColQueryDialog(wx.Dialog):
                     for l in range(1,len(wanted_cols[key][c])):
                         b += letters.find(wanted_cols[key][c][1])
                     wanted_cols[key][c] = (letters.find(wanted_cols[key][c][0]) + 1) * a + b
+        print wanted_cols
         return wanted_cols
