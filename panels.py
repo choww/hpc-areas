@@ -46,9 +46,7 @@ class IntroPanel(wx.Panel):
 class XLPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
-
-        self.SetSize((200, 300))
-        self.Center()
+        
 
         self.curr_dir = os.getcwd()
 
@@ -67,25 +65,28 @@ class XLPanel(wx.Panel):
         self.volumes = []
 
         b_open = wx.Button(self, label="Step 1. Select Excel file")
-        self.t_open = wx.StaticText(self, label="", size=(220,5))
+        self.t_open = wx.StaticText(self, label="", size=(220,-1))
         b_sheet = wx.Button(self, label="Step 2. Select Excel sheet")
-        self.t_sheet = wx.StaticText(self, label="", size=(100,5))
+        self.t_sheet = wx.StaticText(self, label="", size=(100,-1))
         t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron:")
         self.pixels = wx.TextCtrl(self)
         b_run = wx.Button(self, label="Step 4. Start Program")
 
+        self.t_cols = wx.StaticText(self, label="", size=(220,40))
+        
         b_open.Bind(wx.EVT_BUTTON, self.open_xls)
         b_sheet.Bind(wx.EVT_BUTTON, self.get_sheet)
         b_run.Bind(wx.EVT_BUTTON, self.start)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(b_open, 0, wx.ALL|wx.CENTER, 5)
-        sizer.Add(self.t_open, 5, wx.ALL|wx.CENTER, 10)
-        sizer.Add(b_sheet, 0, wx.ALL|wx.CENTER, 5)
-        sizer.Add(self.t_sheet, 0, wx.ALL|wx.CENTER, 10)
-        sizer.Add(t_pixels, 0, wx.ALL|wx.CENTER, 5)
-        sizer.Add(self.pixels, 0, wx.ALL|wx.CENTER, 5)
-        sizer.Add(b_run, 0, wx.ALL|wx.CENTER, 15)
+        sizer.AddMany([(b_open, 0, wx.TOP|wx.CENTER, 15),
+                       (self.t_open, 0, wx.ALL|wx.CENTER, 5),
+                       (b_sheet, 0, wx.ALL|wx.CENTER, 5),
+                       (self.t_sheet, 0, wx.ALL|wx.CENTER, 5),
+                       (t_pixels, 0, wx.ALL|wx.CENTER, 5),
+                       (self.pixels, 0, wx.ALL|wx.CENTER, 5),
+                       (b_run, 0, wx.ALL|wx.CENTER, 15),
+                       (self.t_cols, 1, wx.RIGHT|wx.LEFT, 10)])
 
         self.SetSizer(sizer)
 
@@ -183,10 +184,20 @@ class XLPanel(wx.Panel):
         choose = ColQueryDialog(None, title="Choose columns")
         choose.EnableLayoutAdaptation(True)
         choose.ShowModal()
-        self.wanted_cols = choose.GetValues()
+        self.wanted_cols = choose.GetIndices()
+        wanted_cols = choose.GetValues()
         choose.Destroy()
+
+        # UPDATE self.t_cols in main panel
+        txt = "Selected Columns: \n" \
+              "%s: %s; %s: %s; %s: %s"
+        keys = ['id', 'counts', 'areas']
         
-        print self.wanted_cols
+        t_cols = txt % (keys[0], ", ".join(wanted_cols[keys[0]]), \
+                        keys[1], ", ".join(wanted_cols[keys[1]]), \
+                        keys[2], ", ".join(wanted_cols[keys[2]]))
+        self.t_cols.SetLabel(t_cols)
+
         return self.wanted_cols
 
     def headings(self):
@@ -270,17 +281,28 @@ class XLPanel(wx.Panel):
 
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
+        
+        while True: 
+            try:
+                save = wx.FileDialog(self, message="Save file as...",
+                                     defaultDir=self.curr_dir,
+                                     defaultFile="",
+                                     wildcard=filetypes,
+                                     style=wx.SAVE)
+                save.ShowModal()
+                new_file = save.GetPath()
+                self.new_book.save(new_file)
+                save.Destroy()
 
-        opened_file = True
-        while opened_file: 
-            try: 
-                self.new_book.save('areas-02932075348902.xls')
-                opened_file = False
+                wx.MessageBox('Saved: %s' % (new_file),
+                              'Finished', wx.OK|wx.ICON_INFORMATION)
+                break
             except IOError:                    
-                msg = "Please close the file areas-02932075348902.xls before proceeding" 
+                msg = "Please close the file %s before proceeding" % (new_file) 
                 io = wx.MessageDialog(None, msg, "ERROR",
                                     wx.OK|wx.ICON_EXCLAMATION)
                 io.ShowModal()
                 io.Destroy()
             else:
                 print "****"
+                break

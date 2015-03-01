@@ -47,32 +47,32 @@ class ColQueryDialog(wx.Dialog):
         t_vhilarea = wx.StaticText(pnl, label="Ventral hilus areas")
         self.vhilarea = wx.TextCtrl(pnl)
 
-        sizer.Add(t_id, 0, wx.LEFT|wx.TOP, 5)
-        sizer.Add(self.id, 0, wx.LEFT, 5)
-        sizer.Add(t_group, 0, wx.LEFT, 5)
-        sizer.Add(self.group, 0, wx.LEFT, 5)
+        sizer.AddMany([(t_id,0, wx.LEFT|wx.TOP, 5),
+                       (self.id, 0, wx.LEFT, 5),
+                       (t_group, 0, wx.LEFT, 5),
+                       (self.group, 0, wx.LEFT, 5)])
 
         sizer.AddSpacer(20)
-        sizer.Add(t_count, 0, wx.ALL, 10)
-        sizer.Add(t_ddg, 0, wx.LEFT, 5)
-        sizer.Add(self.ddg, 0, wx.LEFT, 5)
-        sizer.Add(t_vdg, 0, wx.LEFT, 5)
-        sizer.Add(self.vdg, 0, wx.LEFT, 5)
-        sizer.Add(t_dhil, 0, wx.LEFT, 5)
-        sizer.Add(self.dhil, 0, wx.LEFT, 5)
-        sizer.Add(t_vhil, 0, wx.LEFT, 5)
-        sizer.Add(self.vhil, 0, wx.LEFT, 5)
+        sizer.AddMany([(t_count, 0, wx.ALL, 10),
+                       (t_ddg, 0, wx.LEFT, 5),
+                       (self.ddg, 0, wx.LEFT, 5),
+                       (t_vdg, 0, wx.LEFT, 5),
+                       (self.vdg, 0, wx.LEFT, 5),
+                       (t_dhil, 0, wx.LEFT, 5),
+                       (self.dhil, 0, wx.LEFT, 5),
+                       (t_vhil, 0, wx.LEFT, 5),
+                       (self.vhil, 0, wx.LEFT, 5)])
 
         sizer.AddSpacer(20)
-        sizer.Add(t_area, 0, wx.ALL, 10)
-        sizer.Add(t_ddgarea, 0, wx.LEFT, 5)
-        sizer.Add(self.ddgarea, 0, wx.LEFT, 5)
-        sizer.Add(t_vdgarea, 0, wx.LEFT, 5)
-        sizer.Add(self.vdgarea, 0, wx.LEFT, 5)
-        sizer.Add(t_dhilarea, 0, wx.LEFT, 5)
-        sizer.Add(self.dhilarea, 0, wx.LEFT, 5)
-        sizer.Add(t_vhilarea, 0, wx.LEFT, 5)
-        sizer.Add(self.vhilarea, 0, wx.LEFT, 5)
+        sizer.AddMany([(t_area, 0, wx.ALL, 10),
+                       (t_ddgarea, 0, wx.LEFT, 5),
+                       (self.ddgarea, 0, wx.LEFT, 5),
+                       (t_vdgarea, 0, wx.LEFT, 5),
+                       (self.vdgarea, 0, wx.LEFT, 5),
+                       (t_dhilarea, 0, wx.LEFT, 5),
+                       (self.dhilarea, 0, wx.LEFT, 5),
+                       (t_vhilarea, 0, wx.LEFT, 5),
+                       (self.vhilarea, 0, wx.LEFT, 5)])
 
         b_submit = wx.Button(pnl, wx.ID_OK, label="Submit")
         b_submit.SetDefault()
@@ -86,6 +86,7 @@ class ColQueryDialog(wx.Dialog):
         sizer.Add(btnsizer, 0, wx.ALL|wx.CENTER, 5)
         pnl.SetSizer(sizer)
         pnl.Layout()
+
 
     def GetValues(self):
         wanted_cols = {}
@@ -106,7 +107,13 @@ class ColQueryDialog(wx.Dialog):
         wanted_cols['areas'].append(self.dhilarea.GetValue())
         wanted_cols['areas'].append(self.vhilarea.GetValue())
 
-        print wanted_cols
+        for k in wanted_cols:
+            for i in range(len(wanted_cols[k])):
+                wanted_cols[k][i] = wanted_cols[k][i].encode('utf-8').upper()
+        return wanted_cols
+
+    def GetIndices(self):
+        wanted_cols = self.GetValues()
         
         letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         for key in wanted_cols:
