@@ -149,11 +149,15 @@ class XLPanel(wx.Panel):
             elif not px.isdigit():
                 msg = "Please enter numbers only as the pixel value"
             else:
-                self.col_prompt()
-                self.headings()
-                self.multiply_by_10()
-                self.dg_volume()
-                self.cell_density()
+                try:
+                    self.col_prompt()
+                    self.headings()
+                    self.multiply_by_10()
+                except IndexError:
+                    msg = "Please make sure your column IDs are correct!" 
+                else: 
+                    self.dg_volume()
+                    self.cell_density()
                 
             io = wx.MessageDialog(None, msg, "ERROR",
                             wx.OK|wx.ICON_EXCLAMATION)
@@ -206,7 +210,7 @@ class XLPanel(wx.Panel):
             elif key == 'counts':
                 h = max(self.wanted_cols['id']) + 1
             elif key == 'areas':
-                h = max(self.wanted_cols['counts']) + 1
+                h = max(self.wanted_cols['counts']) + 2
             else:
                 pass
 
@@ -237,7 +241,7 @@ class XLPanel(wx.Panel):
         calc = (1/float(px))**2 * 2 * 0.4
 
         for row in range(1, self.wanted_rows):
-            c = max(self.wanted_cols['counts']) + 1
+            c = max(self.wanted_cols['counts']) + 2
             for col in range(len(self.wanted_cols['areas'])):
                 vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
                 self.new_sheet.write(row, c, vol)
@@ -270,11 +274,11 @@ class XLPanel(wx.Panel):
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
 
-        closed_file = True
-        while closed_file: 
+        opened_file = True
+        while opened_file: 
             try: 
                 self.new_book.save('areas-02932075348902.xls')
-                closed_file = False
+                opened_file = False
             except IOError:                    
                 msg = "Please close the file areas-02932075348902.xls before proceeding" 
                 io = wx.MessageDialog(None, msg, "ERROR",
