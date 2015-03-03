@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os, sys
 import wx
-from col_query import *
+from col_dlg import *
 from xlrd import open_workbook
 from xlwt import Workbook
 from xlutils.copy import copy
@@ -40,14 +40,12 @@ class IntroPanel(wx.Panel):
         sizer_i.AddSpacer(15)
         sizer_i.Add(set_img, 0, wx.ALL|wx.CENTER, 10)
         sizer_i.Add(txt2_i, 0, wx.ALL|wx.CENTER, 10)
-        self.SetSizer(sizer_i)
-        
+        self.SetSizer(sizer_i) 
 
 class XLPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
         
-
         self.curr_dir = os.getcwd()
 
         # EXCEL VARS
@@ -62,7 +60,7 @@ class XLPanel(wx.Panel):
 
         # CALCULATION VARS
         self.pixels = 0     # input pixels per micron
-        self.volumes = []
+        self.ror = ""
 
         b_open = wx.Button(self, label="Step 1. Select Excel file")
         self.t_open = wx.StaticText(self, label="", size=(220,-1))
@@ -70,7 +68,17 @@ class XLPanel(wx.Panel):
         self.t_sheet = wx.StaticText(self, label="", size=(100,-1))
         t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron:")
         self.pixels = wx.TextCtrl(self)
-        b_run = wx.Button(self, label="Step 4. Start Program")
+
+        t_region = wx.StaticText(self, label="Step 4. Choose method of analysis")
+        self.r_dv = wx.RadioButton(self, label="Dorsal/Ventral")
+        self.r_tot = wx.RadioButton(self, label="Combined")
+        self.r_all = wx.RadioButton(self, label="All of the above")
+
+        self.r_dv.Bind(wx.EVT_RADIOBUTTON, self.setROR)
+        self.r_tot.Bind(wx.EVT_RADIOBUTTON, self.setROR)
+        self.r_all.Bind(wx.EVT_RADIOBUTTON, self.setROR)
+        
+        b_run = wx.Button(self, label="Step 5. Start Program")
 
         self.t_cols = wx.StaticText(self, label="", size=(220,40))
         
@@ -85,11 +93,15 @@ class XLPanel(wx.Panel):
                        (self.t_sheet, 0, wx.ALL|wx.CENTER, 5),
                        (t_pixels, 0, wx.ALL|wx.CENTER, 5),
                        (self.pixels, 0, wx.ALL|wx.CENTER, 5),
+                       (t_region, 0, wx.ALL|wx.CENTER, 5),
+                       (self.r_dv, 0, wx.ALL|wx.CENTER, 5),
+                       (self.r_tot, 0, wx.ALL|wx.CENTER, 5),
+                       (self.r_all, 0, wx.ALL|wx.CENTER, 5),
                        (b_run, 0, wx.ALL|wx.CENTER, 15),
                        (self.t_cols, 1, wx.RIGHT|wx.LEFT, 10)])
 
         self.SetSizer(sizer)
-
+    
     def open_xls(self, event):
         """
         Opens the selected excel file 
@@ -182,17 +194,38 @@ class XLPanel(wx.Panel):
         self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
         return self.new_book, self.new_sheet
 
+    def setROR(self, event):
+        """
+        Ask user which regions of the hippocampus they would like to analyze.
+        """
+        click = event.GetEventObject()
+        self.ror = click.GetLabel()
+
+        print self.ror, type(self.ror)
+        return self.ror
+
     def col_prompt(self):
         """
         Ask user what columns they want. 
         """
         while True: 
-            try: 
-                choose = ColQueryDialog(None, title="Choose columns")
+            try:
+                choose = ""
+                ror = ""
+                if self.ror == u'Dorsal/Ventral':
+                    choose = DVDialog(None, title="Choose Columns")
+                    ror = 'dv'
+                elif self.ror == u'Combined':
+                    choose = TotDialog(None, title="Choose Columns")
+                    ror = 'tot'
+                else:
+                    choose = AllDialog(None, title="Choose Columns")
+                    ror = 'all'
+
                 choose.EnableLayoutAdaptation(True)
                 if choose.ShowModal() == wx.ID_OK: 
                     choose.Destroy()
-                    colnames = choose.GetValues()
+                    colnames = choose.GetValues(ror)[0]
                 
                     # Update self.t_cols in main panel
                     txt = "Selected Columns: \n" \
@@ -204,6 +237,7 @@ class XLPanel(wx.Panel):
                     self.t_cols.SetLabel(t_cols)
                     self.t_cols.SetForegroundColour((143,28,147))
                     self.wanted_cols = choose.GetIndices()
+                    print self.wanted_cols
                 break
             except IndexError:
                 msg = "Please make sure all fields are filled in!"
@@ -243,6 +277,17 @@ class XLPanel(wx.Panel):
             for i in range(2):
                 self.new_sheet.write(row, i, self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
 
+    ### REFACTOR ATTEMPT 1 ###
+    def enter_data(self, x, y):
+        """
+        x = key for self.wanted_cols
+        y = how much to add to c
+        z = key for the self.wanted_cols inside the nested for loop
+        """
+        for row in range(1, self.wanted_rows):
+            c = max(self.wanted_cols[x]) + y
+            for col in range(len(self.wanted_cols[z])):
+                pass
  
     def multiply_by_10(self):
         """

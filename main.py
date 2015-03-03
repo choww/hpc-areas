@@ -11,7 +11,6 @@ class Count(wx.Frame):
         self.Center()
 
         # APP BODY
-
         self.pnl_i = IntroPanel(self)
         self.pnl = XLPanel(self)
         self.pnl.Hide()
