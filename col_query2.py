@@ -54,7 +54,6 @@ class ColQueryDialog(wx.Dialog):
         for k in wanted_cols:
             for i in range(len(wanted_cols[k])):
                 wanted_cols[k][i] = wanted_cols[k][i].encode('utf-8').upper()
-        print wanted_cols
         return wanted_cols, self.ror
 
     def GetIndices(self):
@@ -72,5 +71,4 @@ class ColQueryDialog(wx.Dialog):
                     for l in range(1,len(wanted_cols[key][c])):
                         b += letters.find(wanted_cols[key][c][1])
                     wanted_cols[key][c] = (letters.find(wanted_cols[key][c][0]) + 1) * a + b
-        print wanted_cols
         return wanted_cols
