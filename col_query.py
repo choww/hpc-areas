@@ -36,6 +36,10 @@ class ColQueryDialog(wx.Dialog):
         self.dhil = wx.TextCtrl(pnl)
         t_vhil = wx.StaticText(pnl, label="Ventral hilus")
         self.vhil = wx.TextCtrl(pnl)
+        t_dg = wx.StaticText(pnl, label="Total Dentate gyrus")
+        self.dg = wx.TextCtrl(pnl)
+        t_hil = wx.StaticText(pnl, label="Total Hilus")
+        self.hil = wx.TextCtrl(pnl)
 
         t_area = wx.StaticText(pnl, label="AREAS")
         t_ddgarea = wx.StaticText(pnl, label="Dorsal dentate areas")
@@ -46,6 +50,10 @@ class ColQueryDialog(wx.Dialog):
         self.dhilarea = wx.TextCtrl(pnl)
         t_vhilarea = wx.StaticText(pnl, label="Ventral hilus areas")
         self.vhilarea = wx.TextCtrl(pnl)
+        t_dgarea = wx.StaticText(pnl, label="Total Dentate gyrus")
+        self.dgarea = wx.TextCtrl(pnl)
+        t_hilarea = wx.StaticText(pnl, label="Total Hilus")
+        self.hilarea = wx.TextCtrl(pnl)
 
         sizer.AddMany([(t_id,0, wx.LEFT|wx.TOP, 5),
                        (self.id, 0, wx.LEFT, 5),
@@ -63,6 +71,12 @@ class ColQueryDialog(wx.Dialog):
                        (t_vhil, 0, wx.LEFT, 5),
                        (self.vhil, 0, wx.LEFT, 5)])
 
+        sizer.AddSpacer(10)
+        sizer.AddMany([(t_dg, 0, wx.LEFT, 5),
+                       (self.dg, 0, wx.LEFT, 5),
+                       (t_hil, 0, wx.LEFT, 5),
+                       (self.hil, 0, wx.LEFT, 5)])
+
         sizer.AddSpacer(20)
         sizer.AddMany([(t_area, 0, wx.ALL, 10),
                        (t_ddgarea, 0, wx.LEFT, 5),
@@ -73,6 +87,12 @@ class ColQueryDialog(wx.Dialog):
                        (self.dhilarea, 0, wx.LEFT, 5),
                        (t_vhilarea, 0, wx.LEFT, 5),
                        (self.vhilarea, 0, wx.LEFT, 5)])
+
+        sizer.AddSpacer(10)
+        sizer.AddMany([(t_dgarea, 0, wx.LEFT, 5),
+                       (self.dgarea, 0, wx.LEFT, 5),
+                       (t_hilarea, 0, wx.LEFT, 5),
+                       (self.hilarea, 0, wx.LEFT, 5)])
 
         b_submit = wx.Button(pnl, wx.ID_OK, label="Submit")
         b_submit.SetDefault()
@@ -100,12 +120,16 @@ class ColQueryDialog(wx.Dialog):
         wanted_cols['counts'].append(self.vdg.GetValue())
         wanted_cols['counts'].append(self.dhil.GetValue())
         wanted_cols['counts'].append(self.vhil.GetValue())
+        wanted_cols['counts'].append(self.dg.GetValue())
+        wanted_cols['counts'].append(self.hil.GetValue())
 
         wanted_cols['areas'] = []
         wanted_cols['areas'].append(self.ddgarea.GetValue())
         wanted_cols['areas'].append(self.vdgarea.GetValue())
         wanted_cols['areas'].append(self.dhilarea.GetValue())
         wanted_cols['areas'].append(self.vhilarea.GetValue())
+        wanted_cols['areas'].append(self.dgarea.GetValue())
+        wanted_cols['areas'].append(self.hilarea.GetValue())
 
         for k in wanted_cols:
             for i in range(len(wanted_cols[k])):

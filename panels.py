@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os, sys
 import wx
-from col_query import *
+import col_query
 from xlrd import open_workbook
 from xlwt import Workbook
 from xlutils.copy import copy
@@ -58,7 +58,8 @@ class XLPanel(wx.Panel):
         self.new_book = ""
         self.new_sheet = 0
         self.wanted_rows = 0
-        self.wanted_cols = 0
+        self.wanted_cols = []
+        self.new_cols = []
 
         # CALCULATION VARS
         self.pixels = 0     # input pixels per micron
@@ -150,7 +151,7 @@ class XLPanel(wx.Panel):
         else: 
             px = self.pixels.GetValue()
             if px == u"":
-                msg = "Please fill in the pixel value!"
+                msg = "Please do not leave any selections or input fields blank!"
             elif not px.isdigit():
                 msg = "Please enter numbers only as the pixel value"
             else:
@@ -188,7 +189,7 @@ class XLPanel(wx.Panel):
         """
         while True: 
             try: 
-                choose = ColQueryDialog(None, title="Choose columns")
+                choose = col_query.ColQueryDialog(None, title="Choose columns")
                 choose.EnableLayoutAdaptation(True)
                 if choose.ShowModal() == wx.ID_OK: 
                     choose.Destroy()
@@ -220,18 +221,21 @@ class XLPanel(wx.Panel):
         Sets up column headings for the new worksheet. 
         """
         headings = {'id': ["ID", "Group"],
-                    'counts': ["Dorsal DG counts", "Ventral DG counts", "Dorsal hil counts", "Ventral hil counts"],
-                    'areas': ["Dorsal DG vol", "Ventral DG vol", "Dorsal hil vol", "Ventral hil vol", ''],
-                    'density': ["Dorsal DG density", "Ventral DG density", "Dorsal hil density", "Ventral hil density"]
+                    'counts': ["Dorsal DG counts", "Ventral DG counts", "Dorsal hil counts",
+                               "Ventral hil counts", "Total DG counts", "Total hil counts"],
+                    'areas': ["Dorsal DG vol", "Ventral DG vol", "Dorsal hil vol",
+                              "Ventral hil vol", "Total DG vol", "Total hil vol"],
+                    'density': ["Dorsal DG density", "Ventral DG density", "Dorsal hil density",
+                                "Ventral hil density", "Total DG density", "Total hil density"]
                     }
         h_order = ['id', 'counts', 'areas', 'density']
         for key in h_order:
             if key == 'id':
-                h = min(self.wanted_cols[key])
+                h = min(self.new_cols[key])
             elif key == 'counts':
-                h = max(self.wanted_cols['id']) + 1
+                h = max(self.new_cols['id']) + 1
             elif key == 'areas':
-                h = max(self.wanted_cols['counts']) + 2
+                h = max(self.new_cols['counts']) + 2
             else:
                 pass
 
@@ -241,7 +245,8 @@ class XLPanel(wx.Panel):
                 
         for row in range(1, self.wanted_rows):
             for i in range(2):
-                self.new_sheet.write(row, i, self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
+                self.new_sheet.write(row, i,
+                                     self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
 
  
     def multiply_by_10(self):
@@ -253,7 +258,7 @@ class XLPanel(wx.Panel):
             for col in range(len(self.wanted_cols['counts'])):
                 calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
                 self.new_sheet.write(row, c, calc)
-                self.wanted_cols['counts'][col] = c
+                self.new_cols['counts'][col] = c
                 c += 1
 
     def dg_volume(self):
@@ -264,12 +269,17 @@ class XLPanel(wx.Panel):
         calc = (1/float(px))**2 * 2 * 0.4
         
         for row in range(1, self.wanted_rows):
-            c = max(self.wanted_cols['counts']) + 2
+            c = max(self.new_cols['counts']) + 2
             for col in range(len(self.wanted_cols['areas'])):
-                vol = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value * calc
-                self.new_sheet.write(row, c, vol)
-                self.wanted_cols['areas'][col] = c
-                c += 1
+                area = self.old_sheet.cell(row, self.wanted_cols['areas'][col]).value
+                if  area == "":
+                    pass
+                else: 
+                    vol = area * calc
+                    self.new_sheet.write(row, c, vol)
+                    self.new_cols['areas'][col] = c
+                    c += 1
+        print "vol:", self.new_cols
 
         self.new_book.save('temp-areas-file.xls')
         print "temp file created"
@@ -283,20 +293,26 @@ class XLPanel(wx.Panel):
         self.new_sheet = self.new_book.get_sheet(-1)
         temp_sheet = temp_book.sheet_by_name('CALCULATED DATA')
 
-        for row in range(1, self.wanted_rows):
-            for col in range(4):
-                cc = max(self.wanted_cols['counts'])
-                ca =  max(self.wanted_cols['areas'])
+        cc = self.new_cols['counts']
+        ca =  self.new_cols['areas']
+        self.new_cols['density'] = []
+        for i in range(len(ca)):
+            self.new_cols['density'].append(i)
 
-                count = temp_sheet.cell(row, cc).value
-                area = temp_sheet.cell(row, ca).value
+        for row in range(1, self.wanted_rows):
+            c = max(ca)+2
+            for col in range(len(ca)):
+                count = temp_sheet.cell(row, cc[col]).value
+                area = temp_sheet.cell(row, ca[col]).value
+                
                 if not (count == "" or area == ""):
                     calc = count/area
                 else:
                     calc = ""
-                self.new_sheet.write(row, c + 10, calc)
+                self.new_sheet.write(row, c, calc)
+                self.new_cols['density'][col] = c
                 c += 1
-
+        print self.new_cols['density']
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
 

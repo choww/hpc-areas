@@ -1,7 +1,7 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
 import wx, wx.lib.scrolledpanel
-from panels import *
+import panels
      
         
 class Count(wx.Frame):
@@ -11,9 +11,8 @@ class Count(wx.Frame):
         self.Center()
 
         # APP BODY
-
-        self.pnl_i = IntroPanel(self)
-        self.pnl = XLPanel(self)
+        self.pnl_i = panels.IntroPanel(self)
+        self.pnl = panels.XLPanel(self)
         self.pnl.Hide()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
