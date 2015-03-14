@@ -58,8 +58,8 @@ class XLPanel(wx.Panel):
         self.new_book = ""
         self.new_sheet = 0
         self.wanted_rows = 0
-        self.wanted_cols = []
-        self.new_cols = []
+        self.wanted_cols = {}
+        self.new_cols = {}
 
         # CALCULATION VARS
         self.pixels = 0     # input pixels per micron
@@ -141,28 +141,33 @@ class XLPanel(wx.Panel):
 
     def start(self, event):
         try:
-            self.new_xls()
+            print self.old_sheet.cell(1,1).value
         except AttributeError:
-            msg = "Please select an excel file, excel sheet, and enter in the pixel value!" 
+            msg = "Please select an excel file and excel sheet!" 
             io = wx.MessageDialog(None, msg, "ERROR",
                                 wx.OK|wx.ICON_EXCLAMATION)
             io.ShowModal()
             io.Destroy()
         else: 
             px = self.pixels.GetValue()
+
             if px == u"":
-                msg = "Please do not leave any selections or input fields blank!"
+                msg = "Please fill in a pixel value!"
             elif not px.isdigit():
                 msg = "Please enter numbers only as the pixel value"
             else:
+                self.new_xls()
                 self.col_prompt()
                 try: 
                     self.multiply_by_10()
-                    self.headings()
                     self.dg_volume()
                     self.cell_density()
+                    self.headings()
                 except IndexError:
                     msg = "Please make sure your column IDs are correct!"
+                except TypeError:
+                    # TypeError: can't multiply sequence by non-int of type 'float'
+                    msg = "Please make sure your selected columns contain only Numbers!"
                 else: 
                     self.save_xls()
 
@@ -205,6 +210,7 @@ class XLPanel(wx.Panel):
                     self.t_cols.SetLabel(t_cols)
                     self.t_cols.SetForegroundColour((143,28,147))
                     self.wanted_cols = choose.GetIndices()
+                    self.new_cols = choose.GetIndices()
                 break
             except IndexError:
                 msg = "Please make sure all fields are filled in!"
@@ -236,11 +242,14 @@ class XLPanel(wx.Panel):
                 h = max(self.new_cols['id']) + 1
             elif key == 'areas':
                 h = max(self.new_cols['counts']) + 2
+            elif key == 'density':
+                h = max(self.new_cols['areas']) + 2
+                print "headings", self.new_cols
             else:
                 pass
 
-            for cell in range(len(headings[key])):
-                self.new_sheet.write(0, h, headings[key][cell])
+            for label in range(len(headings[key])):
+                self.new_sheet.write(0, h, headings[key][label])
                 h += 1
                 
         for row in range(1, self.wanted_rows):
@@ -256,8 +265,13 @@ class XLPanel(wx.Panel):
         for row in range(1, self.wanted_rows):
             c = max(self.wanted_cols['id']) + 1
             for col in range(len(self.wanted_cols['counts'])):
-                calc = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value * 10
-                self.new_sheet.write(row, c, calc)
+                count = self.old_sheet.cell(row, self.wanted_cols['counts'][col]).value
+                if count == "":
+                    pass
+                else:
+                    calc = count * 10
+                    self.new_sheet.write(row, c, calc)
+
                 self.new_cols['counts'][col] = c
                 c += 1
 
@@ -277,8 +291,9 @@ class XLPanel(wx.Panel):
                 else: 
                     vol = area * calc
                     self.new_sheet.write(row, c, vol)
-                    self.new_cols['areas'][col] = c
-                    c += 1
+
+                self.new_cols['areas'][col] = c
+                c += 1
         print "vol:", self.new_cols
 
         self.new_book.save('temp-areas-file.xls')
@@ -309,6 +324,7 @@ class XLPanel(wx.Panel):
                     calc = count/area
                 else:
                     calc = ""
+
                 self.new_sheet.write(row, c, calc)
                 self.new_cols['density'][col] = c
                 c += 1
