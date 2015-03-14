@@ -1,8 +1,6 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys
-import wx
-import col_query
+import os, wx, col_query
 from xlrd import open_workbook
 from xlwt import Workbook
 from xlutils.copy import copy
@@ -14,19 +12,17 @@ class IntroPanel(wx.Panel):
     def __init__(self, parent):
         wx.Panel.__init__(self, parent=parent)
 
-        txt0 = "This app will:\n" \
-               "Calculate counts for the doral & ventral dentate gyrus and hilus (multiply values by 10)\n" \
-               "Calculate dorsal & ventral dentate gyrus and hilar volumes (using Cavalieri's principle)\n" \
-               "Calculate cell density based on counts and volume data (counts/mm3)"
-
+        
+        txt0 = "*** GETTING STARTED ***\n"\
+               "Step 1. Sum up counts and ImageJ area data for each animal."
         txt0_i = wx.StaticText(self, label=txt0)
 
-        txt1 = "Make sure the data in your excel file is formatted " \
+        txt1 = "Step 2. Make sure the data in your excel file is formatted " \
               "similarly to this: "
         txt1_i = wx.StaticText(self, label=txt1)
 
         txt2 = "* NOTE: If you have blank spaces in your file (as shown above), "\
-               "areas won't be calculated for those animals."
+               "volumes and cell density won't be calculated for those animals."
         txt2_i = wx.StaticText(self, label=txt2)
      
         pwd = os.getcwd()
@@ -73,7 +69,7 @@ class XLPanel(wx.Panel):
         self.pixels = wx.TextCtrl(self)
         b_run = wx.Button(self, label="Step 4. Start Program")
 
-        self.t_cols = wx.StaticText(self, label="", size=(220,40))
+        self.t_cols = wx.StaticText(self, label="", size=(220,50))
         
         b_open.Bind(wx.EVT_BUTTON, self.open_xls)
         b_sheet.Bind(wx.EVT_BUTTON, self.get_sheet)
@@ -150,7 +146,6 @@ class XLPanel(wx.Panel):
             io.Destroy()
         else: 
             px = self.pixels.GetValue()
-
             if px == u"":
                 msg = "Please fill in a pixel value!"
             elif not px.isdigit():
@@ -192,17 +187,17 @@ class XLPanel(wx.Panel):
         """
         Ask user what columns they want. 
         """
-        while True: 
-            try: 
+        while True:
+            try:
                 choose = col_query.ColQueryDialog(None, title="Choose columns")
                 choose.EnableLayoutAdaptation(True)
-                if choose.ShowModal() == wx.ID_OK: 
-                    choose.Destroy()
+                if choose.ShowModal() == wx.ID_OK:
                     colnames = choose.GetValues()
                 
-                    # Update self.t_cols in main panel
+                    # Updates self.t_cols 
                     txt = "Selected Columns: \n" \
-                          "%s: %s; %s: %s; %s: %s"
+                          "%s: %s; %s: %s; \n" \
+                          "%s: %s"
                     keys = ['id', 'counts', 'areas']
                     t_cols = txt % (keys[0], ", ".join(colnames[keys[0]]), \
                                     keys[1], ", ".join(colnames[keys[1]]), \
@@ -211,7 +206,7 @@ class XLPanel(wx.Panel):
                     self.t_cols.SetForegroundColour((143,28,147))
                     self.wanted_cols = choose.GetIndices()
                     self.new_cols = choose.GetIndices()
-                break
+                    break
             except IndexError:
                 msg = "Please make sure all fields are filled in!"
                 ie = wx.MessageDialog(None, msg, "ERROR",
@@ -219,7 +214,8 @@ class XLPanel(wx.Panel):
                 ie.ShowModal()
                 ie.Destroy()
             else:
-                return self.wanted_cols
+                choose.Destroy()
+                return self.wanted_cols, self.new_cols
                 break
 
     def headings(self):
@@ -347,6 +343,9 @@ class XLPanel(wx.Panel):
 
                     wx.MessageBox('Saved: %s' % (new_file),
                                   'Finished', wx.OK|wx.ICON_INFORMATION)
+                else:
+                    wx.MessageBox('File not saved.',
+                                  'Cancelled', wx.OK|wx.ICON_INFORMATION)
                 break
             except IOError:                    
                 msg = "Please close the file %s before proceeding" % (new_file) 

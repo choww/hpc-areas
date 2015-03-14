@@ -1,5 +1,6 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
+import os
 import wx, wx.lib.scrolledpanel
 import panels
      
@@ -9,6 +10,15 @@ class Count(wx.Frame):
         wx.Frame.__init__(self, *args, **kwargs)
 
         self.Center()
+
+        # MENU BAR
+        menubar = wx.MenuBar()
+        readme = wx.Menu()
+        about = readme.Append(wx.ID_ANY, 'About')
+        menubar.Append(readme, '&About')
+        self.SetMenuBar(menubar)
+
+        self.Bind(wx.EVT_MENU, self.about, about)
 
         # APP BODY
         self.pnl_i = panels.IntroPanel(self)
@@ -30,6 +40,18 @@ class Count(wx.Frame):
         sizer.Fit(self)
         
         self.Show()
+
+    def about(self, event):
+        msg = "This app will extrapolate count & ImageJ area data obtained from one tenth of the hippocampus to the whole structure.\n" \
+              "Calculate counts for the doral/ventral and total dentate gyrus and hilus (multiply values by 10)\n" \
+              "Calculate dorsal/ventral and total dentate gyrus and hilar volumes (using Cavalieri's principle)\n" \
+              "Calculate cell density based on counts and volume data\n\n" \
+              "Direct any questions to Carmen at c_chow568@yahoo.ca"
+
+        dlg = wx.AboutDialogInfo()
+        dlg.SetDescription(msg)
+    
+        wx.AboutBox(dlg)
 
     def switch_pnl(self, event):
         if self.pnl_i.IsShown():
