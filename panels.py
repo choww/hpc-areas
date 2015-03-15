@@ -14,7 +14,7 @@ class IntroPanel(wx.Panel):
 
         
         txt0 = "*** GETTING STARTED ***\n"\
-               "Step 1. Sum up counts and ImageJ area data for each animal."
+               "Step 1. Sum up the cell counts and ImageJ area data for each animal."
         txt0_i = wx.StaticText(self, label=txt0)
 
         txt1 = "Step 2. Make sure the data in your excel file is formatted " \
@@ -135,6 +135,26 @@ class XLPanel(wx.Panel):
 
         return self.wkbook, self.wksheet, self.old_sheet, self.wanted_rows
 
+    def check_input(self, values, obj_type):
+        """
+        Validates user input
+        """
+        if obj_type == 'dict':
+            for key in values:
+                for item in range(len(values[key])):
+                    if not values[key][item].isalpha():
+                        print "%s is not valid" %(values[key][item])
+                        return False
+            return True
+                        
+        elif obj_type == 'int':
+            if not values.isdigit():
+                return False
+            elif values == u"":
+                return False
+            else:
+                return True
+
     def start(self, event):
         try:
             print self.old_sheet.cell(1,1).value
@@ -146,10 +166,8 @@ class XLPanel(wx.Panel):
             io.Destroy()
         else: 
             px = self.pixels.GetValue()
-            if px == u"":
-                msg = "Please fill in a pixel value!"
-            elif not px.isdigit():
-                msg = "Please enter numbers only as the pixel value"
+            if not self.check_input(px, 'int'):
+                msg = "Please make sure your pixel value is correct!"
             else:
                 self.new_xls()
                 self.col_prompt()
@@ -182,7 +200,7 @@ class XLPanel(wx.Panel):
         self.new_book = Workbook()
         self.new_sheet = self.new_book.add_sheet('CALCULATED DATA', cell_overwrite_ok = True)
         return self.new_book, self.new_sheet
-
+            
     def col_prompt(self):
         """
         Ask user what columns they want. 
@@ -204,9 +222,16 @@ class XLPanel(wx.Panel):
                                     keys[2], ", ".join(colnames[keys[2]]))
                     self.t_cols.SetLabel(t_cols)
                     self.t_cols.SetForegroundColour((143,28,147))
-                    self.wanted_cols = choose.GetIndices()
-                    self.new_cols = choose.GetIndices()
-                    break
+                    if self.check_input(colnames, 'dict'):
+                        self.wanted_cols = choose.GetIndices()
+                        self.new_cols = choose.GetIndices()
+                        break
+                    else:
+                        msg = "Please make sure column IDs contain letters only!"
+                        te = wx.MessageDialog(None, msg, "ERROR",
+                            wx.OK|wx.ICON_EXCLAMATION)
+                        te.ShowModal()
+                        te.Destroy()
             except IndexError:
                 msg = "Please make sure all fields are filled in!"
                 ie = wx.MessageDialog(None, msg, "ERROR",
@@ -252,7 +277,6 @@ class XLPanel(wx.Panel):
             for i in range(2):
                 self.new_sheet.write(row, i,
                                      self.old_sheet.cell(row, self.wanted_cols['id'][i]).value)
-
  
     def multiply_by_10(self):
         """
@@ -290,7 +314,6 @@ class XLPanel(wx.Panel):
 
                 self.new_cols['areas'][col] = c
                 c += 1
-        print "vol:", self.new_cols
 
         self.new_book.save('temp-areas-file.xls')
         print "temp file created"
@@ -324,7 +347,6 @@ class XLPanel(wx.Panel):
                 self.new_sheet.write(row, c, calc)
                 self.new_cols['density'][col] = c
                 c += 1
-        print self.new_cols['density']
         temp_book.release_resources()
         os.remove('temp-areas-file.xls')
 

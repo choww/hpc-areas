@@ -5,7 +5,7 @@ import wx, wx.lib.scrolledpanel
 import panels
      
         
-class Count(wx.Frame):
+class Program(wx.Frame):
     def __init__(self, *args, **kwargs):
         wx.Frame.__init__(self, *args, **kwargs)
 
@@ -14,8 +14,9 @@ class Count(wx.Frame):
         # MENU BAR
         menubar = wx.MenuBar()
         readme = wx.Menu()
-        about = readme.Append(wx.ID_ANY, 'About')
-        menubar.Append(readme, '&About')
+        helpme = readme.Append(wx.ID_ANY, '&Help')
+        about = readme.Append(wx.ID_ANY, '&About')
+        menubar.Append(readme, '&Menu')
         self.SetMenuBar(menubar)
 
         self.Bind(wx.EVT_MENU, self.about, about)
@@ -66,7 +67,7 @@ class Count(wx.Frame):
 
 def runfile():
     app = wx.App()
-    Count(None)
+    Program(None)
     app.MainLoop()
 
 if __name__ == '__main__':

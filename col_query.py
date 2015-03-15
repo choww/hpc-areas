@@ -107,8 +107,14 @@ class ColQueryDialog(wx.Dialog):
         pnl.SetSizer(sizer)
         pnl.Layout()
 
+    def setText(self):
+        values = self.GetValues()
+                
+        self.id.SetValue(values['id'][0])
+        self.group.SetValue(values['id'][1])
 
     def GetValues(self):
+        
         wanted_cols = {}
 
         wanted_cols['id'] = []
@@ -130,10 +136,11 @@ class ColQueryDialog(wx.Dialog):
         wanted_cols['areas'].append(self.vhilarea.GetValue())
         wanted_cols['areas'].append(self.dgarea.GetValue())
         wanted_cols['areas'].append(self.hilarea.GetValue())
-
+       
         for k in wanted_cols:
             for i in range(len(wanted_cols[k])):
                 wanted_cols[k][i] = wanted_cols[k][i].encode('utf-8').upper()
+                    
         return wanted_cols
 
     def GetIndices(self):
@@ -142,7 +149,6 @@ class ColQueryDialog(wx.Dialog):
         letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         for key in wanted_cols:
             for c in range(len(wanted_cols[key])):
-                wanted_cols[key][c] = wanted_cols[key][c].encode('utf-8').upper()
                 if len(wanted_cols[key][c]) == 1:
                     wanted_cols[key][c] = letters.find(wanted_cols[key][c])
                 else:
