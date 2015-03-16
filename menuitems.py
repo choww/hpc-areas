@@ -72,8 +72,6 @@ class HelpDlg(wx.Dialog):
                "\t2. You have selected the correct excel worksheet \n" \
                "\t3. Your column IDs contain only letters (e.g. A, B, MM, etc)"
 
-        txt3 = "
-
         t_rerun = wx.StaticText(pnl, label=txt1)
         t_rerun.Wrap(420)
 
