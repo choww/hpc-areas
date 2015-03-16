@@ -374,5 +374,4 @@ class XLPanel(wx.Panel):
                 io.ShowModal()
                 io.Destroy()
             else:
-                print "****"
                 break

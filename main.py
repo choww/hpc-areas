@@ -1,9 +1,6 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
-import os
-import wx, wx.lib.scrolledpanel
-import panels
-     
+import os, wx, wx.lib.scrolledpanel, panels, menuitems
         
 class Program(wx.Frame):
     def __init__(self, *args, **kwargs):
@@ -20,6 +17,7 @@ class Program(wx.Frame):
         self.SetMenuBar(menubar)
 
         self.Bind(wx.EVT_MENU, self.about, about)
+        self.Bind(wx.EVT_MENU, self.helpme, helpme)
 
         # APP BODY
         self.pnl_i = panels.IntroPanel(self)
@@ -43,16 +41,14 @@ class Program(wx.Frame):
         self.Show()
 
     def about(self, event):
-        msg = "This app will extrapolate count & ImageJ area data obtained from one tenth of the hippocampus to the whole structure.\n" \
-              "Calculate counts for the doral/ventral and total dentate gyrus and hilus (multiply values by 10)\n" \
-              "Calculate dorsal/ventral and total dentate gyrus and hilar volumes (using Cavalieri's principle)\n" \
-              "Calculate cell density based on counts and volume data\n\n" \
-              "Direct any questions to Carmen at c_chow568@yahoo.ca"
+        about = menuitems.AboutDlg(None, title="About")
+        about.ShowModal()
+        about.Destroy()
 
-        dlg = wx.AboutDialogInfo()
-        dlg.SetDescription(msg)
-    
-        wx.AboutBox(dlg)
+    def helpme(self, event):
+        helpme = menuitems.HelpDlg(None, title="Help")
+        helpme.ShowModal()
+        helpme.Destroy()
 
     def switch_pnl(self, event):
         if self.pnl_i.IsShown():
