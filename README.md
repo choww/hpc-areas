@@ -1,6 +1,6 @@
 # Areas Calculator
 
-*Status: Alpha-testing*
+*Status: user testing*
 
 ## Purpose
 
