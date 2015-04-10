@@ -65,7 +65,7 @@ class XLPanel(wx.Panel):
         self.t_open = wx.StaticText(self, label="", size=(220,-1))
         b_sheet = wx.Button(self, label="Step 2. Select Excel sheet")
         self.t_sheet = wx.StaticText(self, label="", size=(100,-1))
-        t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron:")
+        t_pixels = wx.StaticText(self, label="Step 3. Pixels pers micron (e.g. 0.37):")
         self.pixels = wx.TextCtrl(self)
         b_run = wx.Button(self, label="Step 4. Start Program")
 
@@ -139,6 +139,7 @@ class XLPanel(wx.Panel):
         """
         Validates user input
         """
+        # check column name input format 
         if obj_type == 'dict':
             for key in values:
                 for item in range(len(values[key])):
@@ -146,10 +147,12 @@ class XLPanel(wx.Panel):
                         print "%s is not valid" %(values[key][item])
                         return False
             return True
-                        
-        elif obj_type == 'int':
-            if not values.isdigit() or values == u"":
+
+        # check pixel input format  
+        elif obj_type == 'float':
+            if not float(values) or values == u"":
                 return False
+            
             else:
                 return True
 
@@ -164,7 +167,7 @@ class XLPanel(wx.Panel):
             io.Destroy()
         else: 
             px = self.pixels.GetValue()
-            if not self.check_input(px, 'int'):
+            if not self.check_input(px, 'float'):
                 msg = "Please make sure your pixel value is correct!"
             else:
                 self.new_xls()
@@ -296,9 +299,10 @@ class XLPanel(wx.Panel):
     def dg_volume(self):
         """
         Calculate DG & hilar volume for each brain. 
-        """
-        px = (self.pixels.GetValue()).encode('utf-8')
-        calc = (1/float(px))**2 * 2 * 0.4
+        """ 
+        px_per_um = (self.pixels.GetValue()).encode('utf-8')
+        px_per_mm = 1000 * float(px_per_um)
+        calc = (1/px_per_mm)**2 * 2 * 0.4
         
         for row in range(1, self.wanted_rows):
             c = max(self.new_cols['counts']) + 2
